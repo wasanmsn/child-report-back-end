@@ -2,7 +2,7 @@ const clientSessions = require('client-sessions');
 var express = require("express");
 var app = express();
 const authData = require("./auth-service.js")
-var cors = require('cors')
+var cors = require('cors');
 
 var HTTP_PORT = process.env.PORT || 8080;
 var corsOptions = {
@@ -37,6 +37,7 @@ app.post('/register', async (req, res) => {
     console.log(mimeType)
     req.body.picture = {
       data: Buffer.from(base64Data, 'base64'),
+
       contentType: mimeType
     };
   }
@@ -68,25 +69,9 @@ app.post('/login', (req, res) => {
 
 // GET /logout
 app.get('/logout', (req, res) => {
-  req.session.reset();
   res.status(200).send("Logged out.")
 });
 
-
-
-//check login
-app.use(function (req, res, next) {
-  res.locals.session = req.session;
-  next();
-});
-function ensureLogin(req, res, next) {
-
-  if (!req.session || !req.session.user) {
-    console.log("Unauthorized")
-    return res.status(401).send({message:"Unauthorized"});
-  }
-  next();
-}
 //end check login
 // GET /child/{id}
 app.get('/child/:childId', async (req, res) => {
@@ -98,22 +83,13 @@ app.get('/child/:childId', async (req, res) => {
     if (!user) {
       res.status(404).json({ error: 'User not found' });
     } else {
-      // Convert picture data to a base64 string so it can be sent as JSON
-      if (user.picture && user.picture.data) {
-        const picture = `data:${user.picture.contentType};base64,${Buffer.from(user.picture.data).toString('base64')}`;
-        user.picture = null
-        user.picture = picture
-        console.log(user.picture)
-
-      }
-      
       res.status(200).json(user);
     }
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
 });
-app.put('/update/:childId',ensureLogin, async (req, res) => {
+app.put('/update/:childId', async (req, res) => {
   let childId = req.params.childId;
   let updatedFields = req.body;
 
@@ -135,6 +111,17 @@ app.put('/update/:childId',ensureLogin, async (req, res) => {
     res.status(500).json({ error: err.toString() });
   }
 });
+
+app.get('/check-email/:email',async (req,res) => {
+  let email = req.params.email
+  try {
+    const user = await authData.checkEmail(email)
+    if(user) return res.status(200).json({isValid : true})
+    return res.status(200).json({isValid:false})
+  } catch (error) {
+    res.status(error.status).json({message:error.message})
+  }
+})
 
 authData.initialize().then(() => {
   app.listen(HTTP_PORT, onHttpStart());

@@ -53,9 +53,17 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    picture:{
+    picture: {
         data: { type: Buffer, required: true },
         contentType: { type: String, required: true },
+    },
+    nickName: {
+        type: String,
+        required: true
+    },
+    age: {
+        type: Number,
+        required: true
     },
     loginHistory: [loginHistorySchema]
 })
@@ -102,13 +110,15 @@ function registerUser(userData) {
                     motherPhone: userData.motherPhone,
                     fatherPhone: userData.fatherPhone,
                     picture: userData.picture,
+                    age:userData.age,
+                    nickName:userData.nickName,
                     loginHistory: [{ dateTime: new Date(), userAgent: userData.userAgent }]
                 });
                 // save new user to database
 
                 try {
                     await newUser.save();
-                    resolve({email:userData.email,childId:childId})
+                    resolve({ email: userData.email, childId: childId })
                 } catch (err) {
                     if (err.code === 11000) {
                         reject("User Name already taken");
@@ -160,6 +170,16 @@ function checkUser(userData) {
             });
     });
 }
+//check for duplicate email
+async function checkEmail(email){
+    try {
+        const user = await User.find({email:email})
+        if(user) return false
+        return true
+    } catch (error) {
+        throw new Error({message:error.toString(),status:500})
+    }
+}
 
 async function generateNextID() {
     // Fetch the user with the latest childId from the DB
@@ -210,21 +230,16 @@ async function updateUser(childId, updatedFields) {
 
     return user;
 }
-async function getUser(childId){
+async function getUser(childId) {
     try {
         // Find a user by childId
         let user = await User.findOne({ childId: childId });
-  
         // if user exists, convert picture data to base64 string for easier use on the front-end
-        if (user && user.picture && user.picture.data) {
-          user.picture.data = user.picture.data.toString('base64');
-        }
-  
         return user;
-      } catch (err) {
+    } catch (err) {
         console.error(err);
         throw err;
-      }
+    }
 }
-module.exports = { checkUser, registerUser, initialize, updateUser,getUser }
+module.exports = { checkUser, registerUser, initialize, updateUser, getUser,checkEmail }
 
